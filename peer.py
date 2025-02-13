@@ -69,3 +69,30 @@ def listen_for_messages(peer_sock):
 
 def start_peer():
     seed_sock = connect_to_seed("127.0.0.1", 5000)  # Connect
+        if not seed_sock:
+        print("Could not connect to Seed Node. Exiting.")
+        return
+
+    # Get list of peers from Seed Node
+    peer_list = request_peer_list(seed_sock)
+    if not peer_list:
+        print("No peers found. Exiting.")
+        return
+
+    # Connect to a subset of peers (ensure power-law distribution)
+    selected_peers = random.sample(peer_list, min(len(peer_list), 3))  # Choose at least 3 peers
+    connect_to_peers(selected_peers)
+
+    # Start Gossip Protocol
+    gossip_thread = threading.Thread(target=gossip)
+    gossip_thread.start()
+
+    # Start Listening for Messages
+    for peer in connected_peers:
+        listener_thread = threading.Thread(target=listen_for_messages, args=(peer,))
+        listener_thread.start()
+
+    # Start Liveness Check
+    liveness_thread = threading.Thread(target=check_liveness)
+    liveness_thread.start()
+
